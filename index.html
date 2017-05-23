@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <title>Dublin Bus Time Checker</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <script src="http://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css" integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+  <!-- Latest compiled and minified JavaScript -->
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+  <link href="style.css" rel="stylesheet">
+  <script type="text/javascript">
+    var results;
+    var detailedResults;
+    var timestamp;
+    var numOfResults = 0;
+    var stopNo = 0;
+    $(document).ready(function() {
+      $('#searchButton').on('click', function(event) {
+        busStopFinder($('#busStopNo').val());
+      });
+
+      $('#busStopNo').bind("enterKey", function(e) {
+        busStopFinder($('#busStopNo').val());
+      });
+      $('#busStopNo').keyup(function(e) {
+        if (e.keyCode == 13) {
+          $(this).trigger("enterKey");
+        }
+      });
+    });
+
+    function busStopFinder(busStopNo) {
+      $("#scheduleTable tbody tr").remove();
+      $.ajax({
+        type: "GET",
+        url: "https://data.dublinked.ie/cgi-bin/rtpi/realtimebusinformation?stopid=" + busStopNo + "&format=xml",
+        dataType: "xml",
+        success: function(xml) {
+          results = $('results', xml).eq(0);
+          detailedResults = [];
+          timestamp = $('timestamp', xml).eq(0).text();
+          numOfResults = $('numberofresults', xml).eq(0).text();
+          stopNo = busStopNo;
+          errorCode = $('errorcode', xml).eq(0).text();
+          errorMsg = $('errormessage', xml).eq(0).text();
+          var count = 1;
+          $('result', xml).each(function() {
+            var result = {};
+            result.arrivalDateTime = $(this).find('arrivaldatetime').eq(0).text();
+            result.dueTime = $(this).find('duetime').eq(0).text();
+            result.departureDateTime = $(this).find('departuredatetime').eq(0).text();
+            result.departureDueTime = $(this).find('departureduetime').eq(0).text();
+            result.destination = $(this).find('destination').eq(0).text();
+            result.scheduledArrivalDateTime = $(this).find('scheduledarrivaldatetime').eq(0).text();
+            result.scheduledDepartureDateTime = $(this).find('scheduleddeparturedatetime').eq(0).text();
+            result.destinationLocalized = $(this).find('destinationlocalized').eq(0).text();
+            result.origin = $(this).find('origin').eq(0).text();
+            result.originLocalized = $(this).find('originlocalized').eq(0).text();
+            result.route = $(this).find('route').eq(0).text();
+            if ($(this).find('operator').eq(0).text() == 'bac') {
+              result.operator = 'Dublin Bus';
+            } else if ($(this).find('operator').eq(0).text() == 'BE') {
+              result.operator = 'Bus Éireann';
+            }
+            $('#scheduleTable tbody').append('<tr><td>' + count + '</td><td>' + result.route + '</td><td>' + result.origin + '</td><td>' + result.destination + '</td><td>' + result.dueTime + (result.dueTime == 'Due' ? '' : ' min') +
+              '</td><td>' + result.operator + '</td></tr>');
+            detailedResults.push(result);
+            count++;
+          });
+          // console.dir(results);
+          if (errorCode == 0) {
+            $('#stopDetail').text("Stop Number " + stopNo + ", updated at " + timestamp);
+            $('#resultPanel').removeClass('invisible');
+            $('#errorMessage').addClass('invisible');
+          } else {
+            $('#errorMessage').text("ERROR CODE: " + errorCode + " " + errorMsg);
+            $('#resultPanel').addClass('invisible');
+            $('#errorMessage').removeClass('invisible');
+          }
+        },
+        error: function(xml) {
+          alert(xml.status + ' ' + xml.statusText);
+        }
+      });
+    }
+  </script>
+</head>
+
+<body>
+
+  <div class="site-wrapper">
+
+    <div class="site-wrapper-inner">
+
+      <div class="cover-container">
+
+        <nav class="navbar navbar-default navbar-fixed-top">
+          <div class="container-fluid">
+            <div class="navbar-header">
+              <a class="navbar-brand" href="#">Dublin Bus Time Checker</a>
+            </div>
+          </div>
+        </nav>
+
+        <div class="col-md-3">
+        </div>
+
+        <div class="col-md-6">
+          <div class="input-group">
+            <input type="text" class="form-control" placeholder="Bus Stop Number" id="busStopNo">
+            <span class="input-group-btn">
+              <button class="btn btn-default" type="button" id="searchButton">Search</button>
+            </span>
+          </div>
+        </div>
+
+        <div class="col-md-3">
+        </div>
+
+        </br>
+
+        <div class="col-md-12">
+        </div>
+
+
+        <div class="col-md-2">
+        </div>
+
+        <div class="col-md-8">
+
+          <div class="panel panel-default invisible" style="margin-top:10px" id="resultPanel">
+            <!-- Default panel contents -->
+            <div class="panel-heading" id="stopDetail">Stop Detail Placeholder</div>
+
+            <!-- Table -->
+            <table class="table" id="scheduleTable" align="center">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Bus Route</th>
+                  <th>Origin</th>
+                  <th>Destination</th>
+                  <th>Due</th>
+                  <th>Operator</th>
+                </tr>
+              </thead>
+              <tbody>
+
+              </tbody>
+            </table>
+          </div>
+
+          <div class="alert alert-warning alert-dismissible invisible" role="alert" id="errorMessage">
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+            <strong>Warning!</strong>
+          </div>
+
+        </div>
+
+
+        <div class="col-md-2">
+        </div>
+
+        <!-- <div class="mastfoot">
+          <div class="inner">
+            <p><a href="https://starkshaw.me">Zhenbang Xiao, 13181866</a>.</p>
+          </div>
+        </div>
+      </div> -->
+
+      </div>
+
+    </div>
+
+</body>
+
+</html>
